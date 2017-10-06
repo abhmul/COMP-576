@@ -50,13 +50,44 @@ def softmax(x):
     return exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
 
 
+def log(x):
+    a = np.copy(x)
+    a[a <= 0] = 0
+    a[a > 0] = np.log(x[a > 0] + 1)
+    return a
+
+
+def dlog(x):
+    dx = (x > 0).astype(float)
+    dx[x > 0] *= 1 / (x[x > 0] + 1)
+    return dx
+
+
 ACTIVATIONS = {'tanh': np.tanh, 'sigmoid': expit,
                'relu': lambda x: np.maximum(x, 0),
-               'linear': lambda x: x}
+               'qrelu': lambda x: .5 * np.maximum(x, 0)**2,
+               'linear': lambda x: x,
+               'abs': lambda x: 0.05 * np.absolute(x),
+               'sin': np.sin,
+               'log': log,
+               'asinh': np.arcsinh,
+               'stanh': lambda x: 1.592537 * np.tanh(x),
+               'gauss': lambda x: np.exp(-x**2 / 2),
+               'ramp': lambda x: np.minimum(np.maximum(x, -1), 1),
+               'relu6': lambda x: np.minimum(np.maximum(x, 0), 6)}
 dACTIVATIONS = {'tanh': lambda x: 1 - np.square(np.tanh(x)),
                 'sigmoid': lambda x: expit(x) * expit(1 - x),
                 'relu': lambda x: (x > 0).astype(float),
-                'linear': lambda x: 1}
+                'qrelu': lambda x: x * (x > 0).astype(float),
+                'linear': lambda x: 1,
+                'abs': lambda x: 0.05 * np.sign(x),
+                'sin': np.cos,
+                'log': dlog,
+                'asinh': lambda x: 1 / np.sqrt(1 + x**2),
+                'gauss': lambda x: -x * np.exp(-x**2 / 2),
+                'stanh': lambda x: 1.592537 * (1 - np.square(np.tanh(x))),
+                'ramp': lambda x: ((x < 1) * (x > -1)).astype(float),
+                'relu6': lambda x: ((x < 6) * (x > 0)).astype(float)}
 
 
 class NeuralNetwork(object):
@@ -124,8 +155,10 @@ class NeuralNetwork(object):
         self.z1 = np.dot(X, self.W1) + self.b1
         self.a1 = actFun(self.z1)
         self.z2 = np.dot(self.a1, self.W2) + self.b2
+        # print(self.z2)
         exp_scores = np.exp(self.z2 - np.max(self.z2))
-        self.probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+        self.probs = (exp_scores) / \
+            (np.sum(exp_scores, axis=1, keepdims=True))
         return None
 
     def calculate_loss(self, X, y):
@@ -226,8 +259,8 @@ def main():
     plt.scatter(X[:, 0], X[:, 1], s=40, c=y, cmap=plt.cm.Spectral)
     plt.show()
 
-    model = NeuralNetwork(nn_input_dim=2, nn_hidden_dim=100,
-                          nn_output_dim=2, actFun_type='tanh')
+    model = NeuralNetwork(nn_input_dim=2, nn_hidden_dim=3,
+                          nn_output_dim=2, actFun_type='relu6')
     model.fit_model(X, y)
     model.visualize_decision_boundary(X, y)
 

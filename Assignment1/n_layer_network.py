@@ -1,8 +1,19 @@
 from three_layer_neural_network import NeuralNetwork, ACTIVATIONS, dACTIVATIONS, generate_data
+from sklearn import datasets, linear_model
 import matplotlib.pyplot as plt
 import numpy as np
 
 EPS = 1e-11
+
+
+def generate_data2():
+    '''
+    generate data
+    :return: X: input data, y: given labels
+    '''
+    np.random.seed(0)
+    X, y = datasets.make_circles(200, noise=0.1)
+    return X, y
 
 
 class DenseLayer(object):
@@ -70,7 +81,7 @@ class DenseLayer(object):
 
         da = self.diff_actFun(self.z)
         delta = delta_piece * da
-        self.dW = np.dot(self.x.T, delta)
+        self.dW = np.dot(self.x.T, delta) + self.reg_lambda * self.W
         self.db = np.sum(delta, axis=0)
 
         return np.dot(delta, self.W.T)
@@ -94,7 +105,7 @@ class SoftmaxLayer(DenseLayer):
         :return: activations
         '''
         exp_scores = np.exp(z - np.max(z))
-        return exp_scores / (np.sum(exp_scores, axis=1, keepdims=True) + EPS)
+        return exp_scores / (np.sum(exp_scores, axis=1, keepdims=True))
 
     def diff_actFun(self, z):
         '''
@@ -203,16 +214,17 @@ class DeepNeuralNetwork(NeuralNetwork):
 
 def main():
     # # generate and visualize Make-Moons dataset
-    X, y = generate_data()
+    # X, y = generate_data()
+    X, y = generate_data2()
     plt.scatter(X[:, 0], X[:, 1], s=40, c=y, cmap=plt.cm.Spectral)
-    # plt.show()
+    plt.show()
     sizes = [X.shape[1], 10, 6, 4, 3, 3]
-    layers = [DenseLayer(sizes[i], sizes[i + 1], activation='sigmoid')
+    layers = [DenseLayer(sizes[i], sizes[i + 1], activation='ramp')
               for i in range(len(sizes) - 1)]
     layers.append(SoftmaxLayer(sizes[-1], 2))
     model = DeepNeuralNetwork(layers)
 
-    model.fit_model(X, y)
+    model.fit_model(X, y, epsilon=0.001, num_passes=50000)
     model.visualize_decision_boundary(X, y)
 
 

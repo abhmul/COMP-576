@@ -92,18 +92,18 @@ def main():
     # first convolutional layer
     W_conv1 = weight_variable([5, 5, 1, 32])
     b_conv1 = bias_variable([32])
-    h_conv1 = tf.nn.softmax(conv2d(x_image, W_conv1) + b_conv1)
+    h_conv1 = tf.abs(conv2d(x_image, W_conv1) + b_conv1)
     h_pool1 = max_pool_2x2(h_conv1)
     # second convolutional layer
     W_conv2 = weight_variable([5, 5, 32, 64])
     b_conv2 = bias_variable([64])
-    h_conv2 = tf.nn.softmax(conv2d(h_pool1, W_conv2) + b_conv2)
+    h_conv2 = tf.abs(conv2d(h_pool1, W_conv2) + b_conv2)
     h_pool2 = max_pool_2x2(h_conv2)
     # densely connected layer
     W_fc1 = weight_variable([7 * 7 * 64, 1024])
     b_fc1 = bias_variable([1024])
     h_pool2_flat = tf.reshape(h_pool2, [-1, 7 * 7 * 64])
-    h_fc1 = tf.nn.softmax(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+    h_fc1 = tf.abs(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
     # dropout
     keep_prob = tf.placeholder(tf.float32)
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
@@ -116,11 +116,29 @@ def main():
     # setup training
     cross_entropy = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+    opt = tf.train.AdamOptimizer(1e-4)
+    train_step = opt.minimize(cross_entropy)
     correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     # Add a scalar summary for the snapshot loss.
-    tf.summary.scalar(cross_entropy.op.name, cross_entropy)
+    tf.summary.scalar("Loss", cross_entropy)
+    tf.summary.scalar("Accuracy", accuracy)
+    tf.summary.scalar("Learning rate", opt._lr)
+    # Add histogram summary for the weights
+    tf.summary.histogram("Conv Weight 1", W_conv1)
+    tf.summary.histogram("Conv Bias 1", b_conv1)
+    tf.summary.histogram("Conv Activation 1", h_conv1)
+    tf.summary.histogram("Pool Activation 1", h_pool1)
+    tf.summary.histogram("Conv Weight 2", W_conv2)
+    tf.summary.histogram("Conv Bias 2", b_conv2)
+    tf.summary.histogram("Conv Activation 2", h_conv2)
+    tf.summary.histogram("Pool Activation 2", h_pool2)
+    tf.summary.histogram("Fully Connected Weight 1", W_fc1)
+    tf.summary.histogram("Fully Connected Bias 1", b_fc1)
+    tf.summary.histogram("Fully Connected Activation 1", h_fc1)
+    tf.summary.histogram("Fully Connected Weight 2", W_fc2)
+    tf.summary.histogram("Fully Connected Bias 2", b_fc2)
+    tf.summary.histogram("Output", y_conv)
     # Build the summary operation based on the TF collection of Summaries.
     summary_op = tf.summary.merge_all()
 
@@ -158,13 +176,15 @@ def main():
         if i % 1100 == 0 or i == max_step:
             checkpoint_file = os.path.join(result_dir, 'checkpoint')
             saver.save(sess, checkpoint_file, global_step=i)
+            print("val accuracy %g" % accuracy.eval(feed_dict={
+                  x: mnist.validation.images,
+                  y_: mnist.validation.labels, keep_prob: 1.0}))
+            # print test error
+            print("test accuracy %g" % accuracy.eval(feed_dict={
+                x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
 
         # run one train_step
         train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
-
-    # print test error
-    print("test accuracy %g" % accuracy.eval(feed_dict={
-        x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
 
     stop_time = time.time()
     print('The training takes %f second to finish' % (stop_time - start_time))
