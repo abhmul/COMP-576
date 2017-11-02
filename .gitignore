@@ -8,3 +8,25 @@ Assignment1/__pycache__/
 Assignment1/results/
 
 Assignment1/Assignment1\.zip
+
+Assignment2/\.ipynb_checkpoints/
+
+Assignment2/CIFAR10\.zip
+
+Assignment2/CIFAR10/
+
+Assignment2/MNIST_data/
+
+Assignment2/__pycache__/
+
+Assignment2/checkpoint
+
+Assignment2/cifar10-best\.data-00000-of-00001
+
+Assignment2/cifar10-best\.index
+
+Assignment2/cifar10-best\.meta
+
+*.abhijeet-XPS-15-9560
+
+Assignment2/image\.py
